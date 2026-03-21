@@ -2,6 +2,7 @@
   'use strict';
 
   var state = {
+    difficulty: null, // 'standard', 'hard', or null (not selected)
     category: null,
     questions: [],
     currentIndex: 0,
@@ -9,29 +10,73 @@
     answered: false,
     correctCount: 0,
     totalAnswered: 0,
-    shuffledChoices: null, // { choices: [...], correctIndex: number }
-    lastShuffledIndex: -1  // track which question was shuffled
+    shuffledChoices: null,
+    lastShuffledIndex: -1
   };
 
+  function getBank() {
+    return state.difficulty === 'hard' ? (window.QuestionBankHard || {}) : (window.QuestionBank || {});
+  }
+
   function render(container) {
-    if (!state.category) {
+    if (!state.difficulty) {
+      renderDifficultySelect(container);
+    } else if (!state.category) {
       renderCategorySelect(container);
     } else {
       renderQuestion(container);
     }
   }
 
+  function renderDifficultySelect(container) {
+    var html = '<div class="card" style="text-align:center">';
+    html += '<h2 class="card-title">学習モード - 難易度を選択</h2>';
+    html += '<div style="display:flex;flex-direction:column;gap:16px;max-width:400px;margin:0 auto">';
+
+    // Standard
+    var stdCount = 0;
+    CATEGORIES.forEach(function(cat) { stdCount += (window.QuestionBank[cat.key] || []).length; });
+    html += '<button class="category-select-btn" data-difficulty="standard" style="text-align:center">';
+    html += '<div style="font-size:18px;font-weight:700">📘 標準問題</div>';
+    html += '<span class="q-count">本試験レベル・' + stdCount + '問</span>';
+    html += '</button>';
+
+    // Hard
+    var hardCount = 0;
+    CATEGORIES.forEach(function(cat) { hardCount += (window.QuestionBankHard && window.QuestionBankHard[cat.key] || []).length; });
+    html += '<button class="category-select-btn" data-difficulty="hard" style="text-align:center;border-color:#dc2626">';
+    html += '<div style="font-size:18px;font-weight:700;color:#dc2626">🔥 難問チャレンジ</div>';
+    html += '<span class="q-count">本試験より難しめ・' + hardCount + '問</span>';
+    html += '</button>';
+
+    html += '</div>';
+    html += '<div class="btn-row" style="margin-top:24px"><a href="#dashboard" class="btn btn-outline">ダッシュボードに戻る</a></div>';
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('[data-difficulty]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        state.difficulty = btn.getAttribute('data-difficulty');
+        render(container);
+      });
+    });
+  }
+
   function renderCategorySelect(container) {
+    var bank = getBank();
+    var diffLabel = state.difficulty === 'hard' ? '🔥 難問チャレンジ' : '📘 標準問題';
+
     var html = '<div class="card">';
-    html += '<h2 class="card-title">学習モード - 科目を選択</h2>';
+    html += '<h2 class="card-title">' + diffLabel + ' - 科目を選択</h2>';
     html += '<div class="category-select-grid">';
 
     CATEGORIES.forEach(function(cat) {
-      var bank = window.QuestionBank[cat.key] || [];
+      var qs = bank[cat.key] || [];
       var stats = Storage.getCategoryStats(cat.key);
       html += '<button class="category-select-btn" data-category="' + cat.key + '">';
       html += '<div>' + cat.label + '</div>';
-      html += '<span class="q-count">' + bank.length + '問';
+      html += '<span class="q-count">' + qs.length + '問';
       if (stats.total > 0) {
         html += ' / 正答率 ' + stats.accuracy + '%';
       }
@@ -42,7 +87,7 @@
     // All categories shuffle option
     var totalQ = 0;
     CATEGORIES.forEach(function(cat) {
-      totalQ += (window.QuestionBank[cat.key] || []).length;
+      totalQ += (bank[cat.key] || []).length;
     });
     html += '<button class="category-select-btn" data-category="all">';
     html += '<div>全科目シャッフル</div>';
@@ -50,7 +95,10 @@
     html += '</button>';
 
     html += '</div>';
-    html += '<div class="btn-row"><a href="#dashboard" class="btn btn-outline">ダッシュボードに戻る</a></div>';
+    html += '<div class="btn-row">';
+    html += '<button class="btn btn-outline" id="back-to-difficulty">難易度選択に戻る</button>';
+    html += '<a href="#dashboard" class="btn btn-outline">ダッシュボードに戻る</a>';
+    html += '</div>';
     html += '</div>';
 
     container.innerHTML = html;
@@ -61,24 +109,34 @@
         render(container);
       });
     });
+
+    var backBtn = container.querySelector('#back-to-difficulty');
+    if (backBtn) {
+      backBtn.addEventListener('click', function() {
+        state.difficulty = null;
+        render(container);
+      });
+    }
   }
 
   function startStudy(categoryKey) {
+    var bank = getBank();
     state.category = categoryKey;
     state.currentIndex = 0;
     state.selectedChoice = -1;
     state.answered = false;
     state.correctCount = 0;
     state.totalAnswered = 0;
+    state.lastShuffledIndex = -1;
 
     if (categoryKey === 'all') {
       var all = [];
       CATEGORIES.forEach(function(cat) {
-        all = all.concat(window.QuestionBank[cat.key] || []);
+        all = all.concat(bank[cat.key] || []);
       });
       state.questions = shuffleArray(all);
     } else {
-      state.questions = shuffleArray(window.QuestionBank[categoryKey] || []);
+      state.questions = shuffleArray(bank[categoryKey] || []);
     }
   }
 
@@ -94,13 +152,15 @@
       if (cat.key === q.category) catLabel = cat.shortLabel;
     });
 
-    // Shuffle choices once per question (regenerate when question changes)
+    // Shuffle choices once per question
     if (state.lastShuffledIndex !== state.currentIndex) {
       state.shuffledChoices = shuffleChoices(q);
       state.lastShuffledIndex = state.currentIndex;
       state.selectedChoice = -1;
     }
     var sc = state.shuffledChoices;
+
+    var diffBadge = state.difficulty === 'hard' ? '<span class="badge badge-fail" style="font-size:11px">難問</span>' : '';
 
     var html = '<div class="card">';
 
@@ -109,7 +169,7 @@
     html += '<span class="counter">問題 ' + (state.currentIndex + 1) + ' / ' + state.questions.length + '</span>';
     html += '<span class="counter">' + state.correctCount + ' / ' + state.totalAnswered + ' 正解</span>';
     html += '</div>';
-    html += '<div class="question-header"><span class="badge badge-pass">' + catLabel + '</span></div>';
+    html += '<div class="question-header"><span class="badge badge-pass">' + catLabel + '</span>' + diffBadge + '</div>';
 
     // Question text
     html += '<div class="question-text">' + formatText(q.question) + '</div>';
@@ -137,7 +197,6 @@
         '>回答する</button>';
       html += '</div>';
     } else {
-      // Result indicator
       var isCorrect = state.selectedChoice === sc.correctIndex;
       html += '<div class="explanation">';
       html += '<strong style="color:' + (isCorrect ? 'var(--success)' : 'var(--danger)') + '">';
@@ -235,11 +294,8 @@
 
   function formatExplanation(str) {
     var html = escapeHtml(str).replace(/\n/g, '<br>');
-    // 選択肢ラベルの前で段落分け
     html = html.replace(/([。）])(?=(?:選択肢[1-5]|[A-E])[はもの])/g, '$1</p><p>');
-    // 「よって」「したがって」「なお」の前で段落分け
     html = html.replace(/([。）])(?=よって|したがって|以上より|なお[、])/g, '$1</p><p>');
-    // 「正しい」「誤り」等をハイライト
     html = html.replace(/(正しい|正解)/g, '<span class="exp-correct">$1</span>');
     html = html.replace(/(誤り|誤っている|不正解|間違い)/g, '<span class="exp-incorrect">$1</span>');
     return '<p>' + html + '</p>';
@@ -247,6 +303,7 @@
 
   window.Study = {
     render: function(container) {
+      state.difficulty = null;
       state.category = null;
       state.questions = [];
       state.currentIndex = 0;
@@ -254,6 +311,7 @@
       state.answered = false;
       state.correctCount = 0;
       state.totalAnswered = 0;
+      state.lastShuffledIndex = -1;
       render(container);
     }
   };

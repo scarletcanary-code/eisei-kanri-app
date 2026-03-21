@@ -70,17 +70,20 @@
     state.startTime = Date.now();
     state.result = null;
 
-    // Select questions per category
+    // Select questions per category (mix standard + hard)
     var selected = [];
     CATEGORIES.forEach(function(cat) {
-      var bank = shuffleArray(window.QuestionBank[cat.key] || []);
-      var count = Math.min(cat.examCount, bank.length);
+      var stdBank = window.QuestionBank[cat.key] || [];
+      var hardBank = (window.QuestionBankHard && window.QuestionBankHard[cat.key]) || [];
+      // Combine both banks and shuffle
+      var combined = shuffleArray(stdBank.concat(hardBank));
+      var count = Math.min(cat.examCount, combined.length);
       for (var i = 0; i < count; i++) {
-        selected.push(bank[i]);
+        selected.push(combined[i]);
       }
       // If not enough questions, repeat from start
       for (var j = count; j < cat.examCount; j++) {
-        selected.push(bank[j % bank.length]);
+        selected.push(combined[j % combined.length]);
       }
     });
 
