@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(python -c \"import openpyxl; print\\(''openpyxl available''\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python \"C:\\\\Users\\\\scarl\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-scarl-Claudecode-Project-004\\\\28f79268-848b-4916-b416-3357f1f08377\\\\scratchpad\\\\create_excel.py\")",
+      "Bash(python -c \":*)",
+      "Bash(python -u -c \":*)",
+      "Bash(git config:*)",
+      "Bash(gh auth:*)",
+      "Bash(timeout 5 type C:UsersscarlAppDataLocalTempclaudeC--Users-scarl-Claudecode-Project-00428f79268-848b-4916-b416-3357f1f08377tasksbu6jh91qo.output)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
