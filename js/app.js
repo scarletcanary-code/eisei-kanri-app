@@ -42,6 +42,23 @@
     return a;
   };
 
+  // Utility: shuffle choices of a question, returning new correctIndex
+  // Returns { choices: [...], correctIndex: number }
+  window.shuffleChoices = function(q) {
+    // Build index array [0,1,2,3,4], shuffle it
+    var indices = [];
+    for (var i = 0; i < q.choices.length; i++) indices.push(i);
+    var shuffled = shuffleArray(indices);
+
+    var newChoices = [];
+    var newCorrectIndex = 0;
+    for (var j = 0; j < shuffled.length; j++) {
+      newChoices.push(q.choices[shuffled[j]]);
+      if (shuffled[j] === q.correctIndex) newCorrectIndex = j;
+    }
+    return { choices: newChoices, correctIndex: newCorrectIndex };
+  };
+
   window.addEventListener('hashchange', route);
   document.addEventListener('DOMContentLoaded', route);
 })();

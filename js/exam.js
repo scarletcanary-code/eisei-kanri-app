@@ -86,8 +86,11 @@
 
     state.questions = selected;
     state.answers = new Array(selected.length);
+    // Pre-shuffle choices for each question
+    state.shuffledChoicesMap = new Array(selected.length);
     for (var i = 0; i < state.answers.length; i++) {
       state.answers[i] = -1; // -1 = unanswered
+      state.shuffledChoicesMap[i] = shuffleChoices(selected[i]);
     }
 
     startTimer();
@@ -168,8 +171,9 @@
     html += '<span class="badge badge-pass">' + catLabel + '</span>';
     html += '</div>';
     html += '<div class="question-text">' + formatText(q.question) + '</div>';
+    var sc = state.shuffledChoicesMap[state.currentIndex];
     html += '<ul class="choices-list">';
-    q.choices.forEach(function(choice, i) {
+    sc.choices.forEach(function(choice, i) {
       var cls = 'choice-btn';
       if (state.answers[state.currentIndex] === i) cls += ' selected';
       html += '<li><button class="' + cls + '" data-index="' + i + '">' + formatText(choice) + '</button></li>';
@@ -266,7 +270,7 @@
     // Save answers to history
     state.questions.forEach(function(q, i) {
       var selectedIdx = state.answers[i];
-      var correct = selectedIdx === q.correctIndex;
+      var correct = selectedIdx === state.shuffledChoicesMap[i].correctIndex;
       Storage.saveAnswer(q.id, q.category, correct, 'exam');
     });
 
@@ -287,7 +291,7 @@
       state.questions.forEach(function(q, i) {
         if (q.category === cat.key) {
           total++;
-          if (state.answers[i] === q.correctIndex) correctCount++;
+          if (state.answers[i] === state.shuffledChoicesMap[i].correctIndex) correctCount++;
         }
       });
       var points = correctCount * cat.pointsPerQ;
@@ -365,7 +369,8 @@
       html += '<h3 class="card-title">問題の振り返り</h3>';
       state.questions.forEach(function(q, i) {
         var selected = state.answers[i];
-        var isCorrect = selected === q.correctIndex;
+        var sc = state.shuffledChoicesMap[i];
+        var isCorrect = selected === sc.correctIndex;
         var catLabel = '';
         CATEGORIES.forEach(function(cat) {
           if (cat.key === q.category) catLabel = cat.shortLabel;
@@ -380,12 +385,12 @@
         html += '</div>';
         html += '<div style="font-size:14px;font-weight:600;margin:8px 0;line-height:1.7">' + formatText(q.question) + '</div>';
 
-        // Show choices with correct/incorrect markers
+        // Show choices with correct/incorrect markers (shuffled order)
         html += '<ul class="choices-list" style="gap:4px">';
-        q.choices.forEach(function(choice, ci) {
+        sc.choices.forEach(function(choice, ci) {
           var cls = 'choice-btn disabled';
-          if (ci === q.correctIndex) cls += ' correct';
-          else if (ci === selected && ci !== q.correctIndex) cls += ' incorrect';
+          if (ci === sc.correctIndex) cls += ' correct';
+          else if (ci === selected && ci !== sc.correctIndex) cls += ' incorrect';
           html += '<li><button class="' + cls + '" style="padding:8px 12px;font-size:13px">' + formatText(choice) + '</button></li>';
         });
         html += '</ul>';

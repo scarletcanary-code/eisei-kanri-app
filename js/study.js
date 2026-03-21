@@ -8,7 +8,9 @@
     selectedChoice: -1,
     answered: false,
     correctCount: 0,
-    totalAnswered: 0
+    totalAnswered: 0,
+    shuffledChoices: null, // { choices: [...], correctIndex: number }
+    lastShuffledIndex: -1  // track which question was shuffled
   };
 
   function render(container) {
@@ -92,6 +94,14 @@
       if (cat.key === q.category) catLabel = cat.shortLabel;
     });
 
+    // Shuffle choices once per question (regenerate when question changes)
+    if (state.lastShuffledIndex !== state.currentIndex) {
+      state.shuffledChoices = shuffleChoices(q);
+      state.lastShuffledIndex = state.currentIndex;
+      state.selectedChoice = -1;
+    }
+    var sc = state.shuffledChoices;
+
     var html = '<div class="card">';
 
     // Header
@@ -104,14 +114,14 @@
     // Question text
     html += '<div class="question-text">' + formatText(q.question) + '</div>';
 
-    // Choices
+    // Choices (use shuffled)
     html += '<ul class="choices-list">';
-    q.choices.forEach(function(choice, i) {
+    sc.choices.forEach(function(choice, i) {
       var cls = 'choice-btn';
       if (state.answered) {
         cls += ' disabled';
-        if (i === q.correctIndex) cls += ' correct';
-        else if (i === state.selectedChoice && i !== q.correctIndex) cls += ' incorrect';
+        if (i === sc.correctIndex) cls += ' correct';
+        else if (i === state.selectedChoice && i !== sc.correctIndex) cls += ' incorrect';
       } else if (i === state.selectedChoice) {
         cls += ' selected';
       }
@@ -128,7 +138,7 @@
       html += '</div>';
     } else {
       // Result indicator
-      var isCorrect = state.selectedChoice === q.correctIndex;
+      var isCorrect = state.selectedChoice === sc.correctIndex;
       html += '<div class="explanation">';
       html += '<strong style="color:' + (isCorrect ? 'var(--success)' : 'var(--danger)') + '">';
       html += isCorrect ? '正解！' : '不正解';
@@ -165,7 +175,7 @@
       submitBtn.addEventListener('click', function() {
         state.answered = true;
         state.totalAnswered++;
-        var isCorrect = state.selectedChoice === q.correctIndex;
+        var isCorrect = state.selectedChoice === state.shuffledChoices.correctIndex;
         if (isCorrect) state.correctCount++;
         Storage.saveAnswer(q.id, q.category, isCorrect, 'study');
         render(container);
