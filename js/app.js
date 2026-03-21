@@ -43,20 +43,40 @@
   };
 
   // Utility: shuffle choices of a question, returning new correctIndex
-  // Returns { choices: [...], correctIndex: number }
+  // Returns { choices: [...], correctIndex: number, originalToNew: {0:3, 1:0, ...} }
   window.shuffleChoices = function(q) {
-    // Build index array [0,1,2,3,4], shuffle it
     var indices = [];
     for (var i = 0; i < q.choices.length; i++) indices.push(i);
     var shuffled = shuffleArray(indices);
 
     var newChoices = [];
     var newCorrectIndex = 0;
+    var originalToNew = {}; // maps original index -> new index
     for (var j = 0; j < shuffled.length; j++) {
       newChoices.push(q.choices[shuffled[j]]);
+      originalToNew[shuffled[j]] = j;
       if (shuffled[j] === q.correctIndex) newCorrectIndex = j;
     }
-    return { choices: newChoices, correctIndex: newCorrectIndex };
+    return { choices: newChoices, correctIndex: newCorrectIndex, originalToNew: originalToNew };
+  };
+
+  // Utility: remap choice numbers in explanation text after shuffle
+  // e.g. "正解は2" -> "正解は4", "選択肢1" -> "選択肢3"
+  window.remapExplanation = function(text, originalToNew) {
+    if (!text || !originalToNew) return text;
+    // Replace "正解は N" pattern
+    text = text.replace(/正解は\s*([1-5])/g, function(match, n) {
+      var orig = parseInt(n) - 1;
+      var newIdx = originalToNew[orig];
+      return '正解は' + (newIdx !== undefined ? newIdx + 1 : n);
+    });
+    // Replace "選択肢N" pattern (e.g. 選択肢1, 選択肢2)
+    text = text.replace(/選択肢\s*([1-5])/g, function(match, n) {
+      var orig = parseInt(n) - 1;
+      var newIdx = originalToNew[orig];
+      return '選択肢' + (newIdx !== undefined ? newIdx + 1 : n);
+    });
+    return text;
   };
 
   window.addEventListener('hashchange', route);
