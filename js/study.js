@@ -202,7 +202,7 @@
       html += '<strong style="color:' + (isCorrect ? 'var(--success)' : 'var(--danger)') + '">';
       html += isCorrect ? '正解！' : '不正解';
       html += '</strong><br>';
-      html += formatExplanation(remapExplanation(q.explanation, sc.originalToNew));
+      html += formatExplanation(remapExplanation(q.explanation, sc.originalToNew, q.choices));
       html += '</div>';
       html += '<div class="btn-row">';
       if (state.currentIndex < state.questions.length - 1) {

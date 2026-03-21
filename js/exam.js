@@ -398,7 +398,7 @@
         });
         html += '</ul>';
 
-        html += '<div class="explanation" style="margin-top:8px;font-size:13px">' + formatExplanation(remapExplanation(q.explanation, sc.originalToNew)) + '</div>';
+        html += '<div class="explanation" style="margin-top:8px;font-size:13px">' + formatExplanation(remapExplanation(q.explanation, sc.originalToNew, q.choices)) + '</div>';
         html += '</div>';
       });
       html += '</div>';

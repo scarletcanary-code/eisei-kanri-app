@@ -60,22 +60,25 @@
     return { choices: newChoices, correctIndex: newCorrectIndex, originalToNew: originalToNew };
   };
 
-  // Utility: remap choice numbers in explanation text after shuffle
-  // e.g. "正解は2" -> "正解は4", "選択肢1" -> "選択肢3"
-  window.remapExplanation = function(text, originalToNew) {
-    if (!text || !originalToNew) return text;
-    // Replace "正解は N" pattern
-    text = text.replace(/正解は\s*([1-5])/g, function(match, n) {
-      var orig = parseInt(n) - 1;
-      var newIdx = originalToNew[orig];
-      return '正解は' + (newIdx !== undefined ? newIdx + 1 : n);
-    });
-    // Replace "選択肢N" pattern (e.g. 選択肢1, 選択肢2)
-    text = text.replace(/選択肢\s*([1-5])/g, function(match, n) {
-      var orig = parseInt(n) - 1;
-      var newIdx = originalToNew[orig];
-      return '選択肢' + (newIdx !== undefined ? newIdx + 1 : n);
-    });
+  // Utility: clean explanation text for display with shuffled choices
+  // - Remove "正解はN。" (redundant with green/red UI highlighting)
+  // - Replace "選択肢N" with snippet of that choice's content
+  window.remapExplanation = function(text, originalToNew, originalChoices) {
+    if (!text) return text;
+    // Remove "正解はN。" or "正解はN、" at the start or mid-sentence
+    text = text.replace(/正解は\s*[1-5]\s*[。、．.]\s*/g, '');
+    // Replace "選択肢N" with the choice content snippet (first 15 chars)
+    if (originalChoices) {
+      text = text.replace(/選択肢\s*([1-5])/g, function(match, n) {
+        var idx = parseInt(n) - 1;
+        if (idx >= 0 && idx < originalChoices.length && originalChoices[idx]) {
+          var snippet = originalChoices[idx].substring(0, 20);
+          if (originalChoices[idx].length > 20) snippet += '…';
+          return '「' + snippet + '」';
+        }
+        return match;
+      });
+    }
     return text;
   };
 
