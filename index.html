@@ -10,9 +10,15 @@
   <header class="header">
     <div class="header-inner">
       <a href="#dashboard" class="logo">第一種衛生管理者 試験対策</a>
+      <div id="auth-area" class="auth-area"></div>
     </div>
   </header>
   <main id="app" class="container"></main>
+
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
   <!-- Question Data -->
   <script src="js/data/questions-hazardous-health.js"></script>
@@ -20,6 +26,10 @@
   <script src="js/data/questions-hazardous-law.js"></script>
   <script src="js/data/questions-general-law.js"></script>
   <script src="js/data/questions-physiology.js"></script>
+
+  <!-- Firebase Init & Auth -->
+  <script src="js/firebase-init.js"></script>
+  <script src="js/auth.js"></script>
 
   <!-- Modules -->
   <script src="js/storage.js"></script>
