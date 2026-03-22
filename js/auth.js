@@ -3,6 +3,28 @@
 
   var currentUser = null;
   var onAuthChangeCallbacks = [];
+  var redirectPending = false;
+
+  // 画面上にステータスメッセージを表示（モバイルデバッグ用）
+  function showAuthStatus(msg) {
+    var el = document.getElementById('auth-status');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'auth-status';
+      el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;padding:8px 12px;' +
+        'background:#1e293b;color:#fbbf24;font-size:13px;z-index:9999;text-align:center;' +
+        'transition:opacity .3s;';
+      document.body.appendChild(el);
+    }
+    if (msg) {
+      el.textContent = msg;
+      el.style.opacity = '1';
+      el.style.display = 'block';
+    } else {
+      el.style.opacity = '0';
+      setTimeout(function() { el.style.display = 'none'; }, 300);
+    }
+  }
 
   function renderAuthArea() {
     var area = document.getElementById('auth-area');
@@ -30,28 +52,36 @@
 
   function isInAppBrowser() {
     var ua = navigator.userAgent || '';
-    // LINE, Facebook, Instagram等のアプリ内ブラウザを検出
     return /Line\//i.test(ua) || /FBAN|FBAV/i.test(ua) || /Instagram/i.test(ua) || /Twitter/i.test(ua);
   }
 
   function signInWithGoogle() {
     var provider = new firebase.auth.GoogleAuthProvider();
-    // アプリ内ブラウザではリダイレクト方式を使用（ポップアップ不可のため）
+    provider.addScope('email');
+    provider.addScope('profile');
+
     if (isInAppBrowser()) {
-      console.log('In-app browser detected, using redirect');
-      auth.signInWithRedirect(provider);
+      showAuthStatus('アプリ内ブラウザではログインできません。Chromeで開いてください。');
       return;
     }
-    // 通常ブラウザ（PC・モバイルChrome等）ではポップアップを使用
+
+    // ポップアップを試行 → ブロックされたらリダイレクト
+    showAuthStatus('ログイン中...');
     auth.signInWithPopup(provider).then(function(result) {
+      showAuthStatus('');
       console.log('Popup login success:', result.user.displayName);
     }).catch(function(error) {
-      console.error('Login error:', error.code, error.message);
-      if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
-        console.log('Popup blocked, falling back to redirect');
+      console.error('Popup error:', error.code, error.message);
+      if (error.code === 'auth/popup-blocked') {
+        showAuthStatus('リダイレクト方式でログイン中...');
+        // リダイレクト前にフラグを保存
+        try { sessionStorage.setItem('auth_redirect_pending', '1'); } catch(e) {}
         auth.signInWithRedirect(provider);
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        showAuthStatus('');
       } else {
-        alert('ログインに失敗しました: ' + error.message);
+        showAuthStatus('エラー: ' + error.code);
+        setTimeout(function() { showAuthStatus(''); }, 5000);
       }
     });
   }
@@ -68,24 +98,45 @@
     return div.innerHTML;
   }
 
+  // リダイレクトから戻ったか確認
+  var wasRedirect = false;
+  try { wasRedirect = sessionStorage.getItem('auth_redirect_pending') === '1'; } catch(e) {}
+
+  if (wasRedirect) {
+    showAuthStatus('認証結果を確認中...');
+    try { sessionStorage.removeItem('auth_redirect_pending'); } catch(e) {}
+  }
+
   // リダイレクト方式のログイン結果を処理
   auth.getRedirectResult().then(function(result) {
     if (result && result.user) {
       console.log('Redirect login success:', result.user.displayName);
+      showAuthStatus('ログイン成功: ' + result.user.displayName);
+      setTimeout(function() { showAuthStatus(''); }, 2000);
+    } else if (wasRedirect) {
+      // リダイレクトから戻ったのに結果がない = 第三者Cookie問題の可能性
+      console.warn('Redirect returned but no auth result');
+      showAuthStatus('ログインが完了しませんでした。ブラウザ設定を確認してください。');
+      setTimeout(function() { showAuthStatus(''); }, 8000);
     }
   }).catch(function(error) {
     console.error('Redirect login error:', error.code, error.message);
     if (error.code === 'auth/network-request-failed') {
-      alert('ネットワークエラーが発生しました。ブラウザの設定でサードパーティCookieが許可されているか確認してください。');
+      showAuthStatus('ネットワークエラー: サードパーティCookieの許可が必要です');
     } else if (error.code && error.code !== 'auth/popup-closed-by-user') {
-      alert('ログインエラー: ' + error.message);
+      showAuthStatus('エラー: ' + error.code);
     }
+    setTimeout(function() { showAuthStatus(''); }, 8000);
   });
 
   // Listen for auth state changes
   auth.onAuthStateChanged(function(user) {
     currentUser = user;
     renderAuthArea();
+
+    if (user && wasRedirect) {
+      showAuthStatus('');
+    }
 
     // Notify Storage module
     onAuthChangeCallbacks.forEach(function(cb) {
