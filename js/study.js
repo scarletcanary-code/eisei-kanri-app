@@ -294,10 +294,13 @@
 
   function formatExplanation(str) {
     var html = escapeHtml(str).replace(/\n/g, '<br>');
-    html = html.replace(/([。）])(?=(?:選択肢[1-5]|[A-E])[はもの])/g, '$1</p><p>');
+    // 区切りキーワードで段落分け
     html = html.replace(/([。）])(?=よって|したがって|以上より|なお[、])/g, '$1</p><p>');
+    // 正解/誤りのハイライト
     html = html.replace(/(正しい|正解)/g, '<span class="exp-correct">$1</span>');
     html = html.replace(/(誤り|誤っている|不正解|間違い)/g, '<span class="exp-incorrect">$1</span>');
+    // 「…」引用部分をハイライト
+    html = html.replace(/「([^」]{1,40})」/g, '<span class="exp-quote">「$1」</span>');
     return '<p>' + html + '</p>';
   }
 
