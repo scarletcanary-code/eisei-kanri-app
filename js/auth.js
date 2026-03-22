@@ -28,20 +28,27 @@
     }
   }
 
-  function isMobile() {
-    return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  function isInAppBrowser() {
+    var ua = navigator.userAgent || '';
+    // LINE, Facebook, Instagram等のアプリ内ブラウザを検出
+    return /Line\//i.test(ua) || /FBAN|FBAV/i.test(ua) || /Instagram/i.test(ua) || /Twitter/i.test(ua);
   }
 
   function signInWithGoogle() {
     var provider = new firebase.auth.GoogleAuthProvider();
-    // モバイルではリダイレクト方式を使用（ポップアップはブロックされるため）
-    if (isMobile()) {
+    // アプリ内ブラウザではリダイレクト方式を使用（ポップアップ不可のため）
+    if (isInAppBrowser()) {
+      console.log('In-app browser detected, using redirect');
       auth.signInWithRedirect(provider);
       return;
     }
-    auth.signInWithPopup(provider).catch(function(error) {
-      console.error('Login error:', error);
+    // 通常ブラウザ（PC・モバイルChrome等）ではポップアップを使用
+    auth.signInWithPopup(provider).then(function(result) {
+      console.log('Popup login success:', result.user.displayName);
+    }).catch(function(error) {
+      console.error('Login error:', error.code, error.message);
       if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+        console.log('Popup blocked, falling back to redirect');
         auth.signInWithRedirect(provider);
       } else {
         alert('ログインに失敗しました: ' + error.message);
