@@ -28,11 +28,19 @@
     }
   }
 
+  function isMobile() {
+    return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+
   function signInWithGoogle() {
     var provider = new firebase.auth.GoogleAuthProvider();
+    // モバイルではリダイレクト方式を使用（ポップアップはブロックされるため）
+    if (isMobile()) {
+      auth.signInWithRedirect(provider);
+      return;
+    }
     auth.signInWithPopup(provider).catch(function(error) {
       console.error('Login error:', error);
-      // ポップアップがブロックされた場合、リダイレクト方式にフォールバック
       if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
         auth.signInWithRedirect(provider);
       } else {
