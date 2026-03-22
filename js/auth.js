@@ -62,9 +62,16 @@
   }
 
   // リダイレクト方式のログイン結果を処理
-  auth.getRedirectResult().catch(function(error) {
-    if (error.code && error.code !== 'auth/popup-closed-by-user') {
-      console.error('Redirect login error:', error);
+  auth.getRedirectResult().then(function(result) {
+    if (result && result.user) {
+      console.log('Redirect login success:', result.user.displayName);
+    }
+  }).catch(function(error) {
+    console.error('Redirect login error:', error.code, error.message);
+    if (error.code === 'auth/network-request-failed') {
+      alert('ネットワークエラーが発生しました。ブラウザの設定でサードパーティCookieが許可されているか確認してください。');
+    } else if (error.code && error.code !== 'auth/popup-closed-by-user') {
+      alert('ログインエラー: ' + error.message);
     }
   });
 
