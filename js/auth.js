@@ -50,9 +50,71 @@
     }
   }
 
-  function isInAppBrowser() {
+  function detectInAppBrowser() {
     var ua = navigator.userAgent || '';
-    return /Line\//i.test(ua) || /FBAN|FBAV/i.test(ua) || /Instagram/i.test(ua) || /Twitter/i.test(ua);
+    if (/Line\//i.test(ua)) return 'LINE';
+    if (/FBAN|FBAV/i.test(ua)) return 'Facebook';
+    if (/Instagram/i.test(ua)) return 'Instagram';
+    if (/Twitter/i.test(ua)) return 'Twitter';
+    if (/YJApp/i.test(ua) || /Yahoo/i.test(ua) && /Mobile/i.test(ua) && !/Chrome/i.test(ua)) return 'Yahoo!';
+    return null;
+  }
+
+  function showOpenInBrowserBanner() {
+    var appName = detectInAppBrowser();
+    if (!appName) return;
+
+    var existing = document.getElementById('inapp-banner');
+    if (existing) return;
+
+    var url = location.href;
+    var banner = document.createElement('div');
+    banner.id = 'inapp-banner';
+    banner.innerHTML =
+      '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;">' +
+        '<div style="background:#fff;border-radius:12px;padding:24px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.2);">' +
+          '<div style="font-size:32px;margin-bottom:12px;">&#128274;</div>' +
+          '<h3 style="margin:0 0 8px;font-size:17px;color:#1e293b;">外部ブラウザで開いてください</h3>' +
+          '<p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.6;">' +
+            appName + 'のアプリ内ブラウザでは<br>Googleログインが利用できません。<br>' +
+            '<strong>Chrome</strong>または<strong>Safari</strong>で開いてください。' +
+          '</p>' +
+          '<button id="inapp-copy-btn" style="display:block;width:100%;padding:12px;margin-bottom:8px;' +
+            'background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">' +
+            'URLをコピー' +
+          '</button>' +
+          '<p style="margin:8px 0 0;font-size:12px;color:#94a3b8;">コピー後、Chromeに貼り付けて開いてください</p>' +
+          '<button id="inapp-close-btn" style="margin-top:12px;background:none;border:none;color:#94a3b8;font-size:13px;cursor:pointer;text-decoration:underline;">' +
+            'ログインせずに使う' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(banner);
+
+    document.getElementById('inapp-copy-btn').addEventListener('click', function() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function() {
+          document.getElementById('inapp-copy-btn').textContent = 'コピーしました!';
+          document.getElementById('inapp-copy-btn').style.background = '#16a34a';
+        });
+      } else {
+        // フォールバック: テキスト選択
+        var input = document.createElement('input');
+        input.value = url;
+        input.style.cssText = 'position:fixed;top:-9999px;';
+        document.body.appendChild(input);
+        input.select();
+        input.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        document.getElementById('inapp-copy-btn').textContent = 'コピーしました!';
+        document.getElementById('inapp-copy-btn').style.background = '#16a34a';
+      }
+    });
+
+    document.getElementById('inapp-close-btn').addEventListener('click', function() {
+      banner.remove();
+    });
   }
 
   function signInWithGoogle() {
@@ -60,8 +122,8 @@
     provider.addScope('email');
     provider.addScope('profile');
 
-    if (isInAppBrowser()) {
-      showAuthStatus('アプリ内ブラウザではログインできません。Chromeで開いてください。');
+    if (detectInAppBrowser()) {
+      showOpenInBrowserBanner();
       return;
     }
 
@@ -74,7 +136,6 @@
       console.error('Popup error:', error.code, error.message);
       if (error.code === 'auth/popup-blocked') {
         showAuthStatus('リダイレクト方式でログイン中...');
-        // リダイレクト前にフラグを保存
         try { sessionStorage.setItem('auth_redirect_pending', '1'); } catch(e) {}
         auth.signInWithRedirect(provider);
       } else if (error.code === 'auth/popup-closed-by-user') {
@@ -143,6 +204,11 @@
       cb(user);
     });
   });
+
+  // ページ読み込み時にアプリ内ブラウザを検出して案内表示
+  if (detectInAppBrowser() && !currentUser) {
+    showOpenInBrowserBanner();
+  }
 
   window.Auth = {
     getUser: function() { return currentUser; },
