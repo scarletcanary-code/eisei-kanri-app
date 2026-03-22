@@ -32,7 +32,10 @@
     var provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider).catch(function(error) {
       console.error('Login error:', error);
-      if (error.code !== 'auth/popup-closed-by-user') {
+      // ポップアップがブロックされた場合、リダイレクト方式にフォールバック
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+        auth.signInWithRedirect(provider);
+      } else {
         alert('ログインに失敗しました: ' + error.message);
       }
     });
@@ -49,6 +52,13 @@
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;
   }
+
+  // リダイレクト方式のログイン結果を処理
+  auth.getRedirectResult().catch(function(error) {
+    if (error.code && error.code !== 'auth/popup-closed-by-user') {
+      console.error('Redirect login error:', error);
+    }
+  });
 
   // Listen for auth state changes
   auth.onAuthStateChanged(function(user) {
